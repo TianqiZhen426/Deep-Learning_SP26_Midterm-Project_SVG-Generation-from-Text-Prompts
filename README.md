@@ -98,7 +98,7 @@ All rows valid and formatted correctly
 Established a working baseline on Kaggle
 
 ## HOW TO RUN
-Open the notebook in Google Colab
-upload the 'dl-spring-2026-svg-generation' zip file
-Install dependencies
-Run inference to generate submission.csv
+1. Open the notebook in Google Colab
+2. upload the 'dl-spring-2026-svg-generation' zip file
+3. Install dependencies
+4. Run inference to generate submission.csv
