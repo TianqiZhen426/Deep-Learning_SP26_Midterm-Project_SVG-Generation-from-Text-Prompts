@@ -4,18 +4,18 @@ This project focuses on generating SVG  code from natural language prompts using
 
 ## Task
 Given a natural language prompt such as:
--"A black rectangle enclosed in a circle"
--the model must generate valid SVG code like:
+- "A black rectangle enclosed in a circle"
+- the model must generate valid SVG code like:
 <svg ...>
   <circle ... />
   <rectangle ... />
 </svg>
--Constraints include:
--Must be valid XML
--Must start with <svg> and end with </svg>
--Must be under 8000 characters
--Must use allowed SVG tags
--Must render meaningful visual shapes
+- Constraints include:
+- Must be valid XML
+- Must start with <svg> and end with </svg>
+- Must be under 8000 characters
+- Must use allowed SVG tags
+- Must render meaningful visual shapes
 
 ## Model
 Base model: Qwen2.5
