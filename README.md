@@ -77,7 +77,7 @@ No crash during evaluation
 
 ### Visible Shape Check
 has_visible_shape()
-Ensures SVG is not empty by checking for <path>, <rect>, <circle>, etc.
+Ensures SVG is not empty by checking for path, rect, circle, etc.
 
 ### Inference Strategy
 SVG generation uses:
