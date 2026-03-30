@@ -93,9 +93,9 @@ Scoring:
 score = (shape_score, path_count, length)
 
 ### Results
-Successfully generated 1000 SVG outputs
-All rows valid and formatted correctly
-Established a working baseline on Kaggle
+1. Successfully generated 1000 SVG outputs
+2. All rows valid and formatted correctly
+3. Established a working baseline on Kaggle
 
 ## HOW TO RUN
 1. Open the notebook in Google Colab
