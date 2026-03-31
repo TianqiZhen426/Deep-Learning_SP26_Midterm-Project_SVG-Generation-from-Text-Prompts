@@ -1,17 +1,15 @@
 # Deep-Learning_SP26_Midterm-Project
 
-## SVG Generation from Text Prompts
-
 ## Author
 **Tianqi Zhen**
+
+## SVG Generation from Text Prompts
 
 ---
 
 ## Project Overview
 
-This project focuses on generating SVG (Scalable Vector Graphics) code from natural language prompts using a fine-tuned language model. The objective is to produce **valid, compact, and visually meaningful SVG outputs** that satisfy strict formatting and structural constraints.
-
-The task is based on a Kaggle competition, where the model is trained on prompt–SVG pairs and evaluated on its ability to generate valid SVGs for unseen prompts.
+This project aims to generate SVG code from natural language prompts using a fine-tuned language model. The goal is to produce valid, compact, and visually meaningful SVG outputs under strict structural constraints. The task is based on a Kaggle competition where models are trained on prompt–SVG pairs and evaluated on their ability to generate valid SVGs for unseen prompts. The key challenge of this project is that language models often generate invalid SVGs, including malformed XML, missing tags, or additional explanatory text. Therefore, a major contribution of this work is a robust SVG post-processing and repair pipeline.
 
 ---
 
@@ -21,7 +19,7 @@ Given a natural language prompt such as:
 
 > "A black rectangle enclosed in a circle"
 
-the model is expected to generate valid SVG code like:
+the model must generate valid SVG code:
 
 ```xml
 <svg ...>
@@ -35,33 +33,38 @@ the model is expected to generate valid SVG code like:
 * Must be valid XML
 * Must start with `<svg>` and end with `</svg>`
 * Must be under 8000 characters
-* Must use only allowed SVG tags
-* Must render meaningful visual shapes
+* Must use allowed SVG tags
+* Must contain meaningful visual content
 
 ---
 
 ## Model
 
-* **Base model:** Qwen2.5
+* **Base model:** Qwen2.5 (small variant)
 * **Fine-tuning method:** LoRA (Low-Rank Adaptation)
-* **Training framework:** transformers, TRL (SFTTrainer), PEFT
+* **Frameworks:** transformers, TRL (SFTTrainer), PEFT
+
+The model is fine-tuned to map natural language prompts to SVG code.
 
 ---
 
 ## Data Processing
 
-The project applies several preprocessing steps:
+To improve training stability and efficiency, we applied:
 
-1. Remove invalid SVG samples
-2. Filter out disallowed tags
-3. Limit token length for efficient training
-4. Construct a shorter dataset for faster experimentation
+1. Removal of invalid SVG samples
+2. Filtering of disallowed tags
+3. Token length constraints to avoid overly long sequences
+4. Construction of a short dataset (≤1536 tokens)
+
+This reduced training cost significantly while maintaining reasonable performance.
 
 ---
 
-## SVG Post-processing Pipeline
+## SVG Post-processing Pipeline (Core Contribution)
 
-The most critical component of this project is the **SVG post-processing pipeline**, which ensures that generated outputs are valid and usable.
+A major challenge is that raw model outputs are often not directly usable.
+To address this, a multi-stage pipeline applied:
 
 ---
 
@@ -69,9 +72,9 @@ The most critical component of this project is the **SVG post-processing pipelin
 
 `extract_first_svg()`
 
-* Removes code blocks and special tokens
+* Removes code fences and special tokens
 * Extracts the first `<svg>...</svg>` block
-* Attempts to recover incomplete SVG outputs
+* Attempts to recover incomplete outputs
 
 ---
 
@@ -79,12 +82,12 @@ The most critical component of this project is the **SVG post-processing pipelin
 
 `repair_common_svg_issues()`
 
-Fixes common generation errors, including:
+Fixes common errors:
 
 * Broken `<svg>` tags
-* Missing closing tags (`</path>`, `</g>`, etc.)
+* Missing closing tags (`</path>`, `</g>`)
 * Truncated tags (`</pa`, `</pat`)
-* Empty `fill` attributes
+* Empty fill attributes
 
 ---
 
@@ -92,7 +95,7 @@ Fixes common generation errors, including:
 
 `enforce_canvas()`
 
-Ensures required attributes:
+Ensures all outputs satisfy:
 
 * `xmlns="http://www.w3.org/2000/svg"`
 * `width="256"`
@@ -105,22 +108,35 @@ Ensures required attributes:
 
 `sanitize_generated_svg()`
 
-Pipeline steps:
+Pipeline:
 
 1. Extract SVG
 2. Normalize formatting
-3. Fix fill-related issues
-4. Validate SVG structure
+3. Fix fill issues
+4. Validate structure
 5. Repair and revalidate
-6. Apply fallback if still invalid
+6. Fallback if still invalid
 
 ---
 
-### 5. Fallback Mechanism
+### 5. Visible Shape Check
+
+`has_visible_shape()`
+
+Ensures the SVG is not empty by checking for:
+
+* `<path>`
+* `<rect>`
+* `<circle>`
+* `<polygon>`
+
+---
+
+### 6. Fallback Mechanism
 
 `fallback_svg()`
 
-If all validation attempts fail, return:
+If all attempts fail:
 
 ```xml
 <svg ...>
@@ -130,22 +146,9 @@ If all validation attempts fail, return:
 
 This guarantees:
 
-* Valid submission format
+* Valid submission
 * No missing rows
-* No runtime failures during evaluation
-
----
-
-### 6. Visible Shape Check
-
-`has_visible_shape()`
-
-Ensures the SVG is not empty by checking for visible elements such as:
-
-* `<path>`
-* `<rect>`
-* `<circle>`
-* `<polygon>`
+* No runtime errors
 
 ---
 
@@ -155,45 +158,117 @@ SVG generation is handled by:
 
 `generate_best_svg()`
 
-### Key ideas:
+### Strategy
 
-* Multiple attempts (`tries`)
-* Selection of the best candidate based on:
-
-  * Presence of visible shapes
-  * Number of path elements
-  * SVG length
-
-### Scoring function:
+* Generate SVG using the model
+* Apply full sanitization pipeline
+* Score candidates based on:
 
 ```python
 score = (shape_score, path_count, length)
 ```
 
+Where:
+
+* `shape_score`: whether visible shapes exist
+* `path_count`: number of graphical elements
+* `length`: SVG richness
+
+---
+
+## Engineering Considerations
+
+### Runtime Constraints
+
+Generating 1000 SVGs in Google Colab introduces significant constraints:
+
+* Long inference time (around 12 hours)
+* Frequent runtime disconnections
+* GPU session limits
+
+---
+
+### Speed vs Quality Trade-off
+
+To ensure successful submission within limited resources and time, I have to do the following trade-offs:
+
+#### Optimizations for Speed
+
+* Reduced `max_new_tokens` from ~1800 → **256** (Original: 1800)
+* Set `tries = 1` (Original: 3)
+* Used a smaller training subset
+* Performed incremental saving during inference
+
+#### Impact on Quality
+
+These choices led to:
+
+* Increased fallback SVG outputs
+* Reduced complexity of generated shapes
+* Lower diversity in SVG structures
+* Fewer multi-element compositions
+
+The model became **more stable but less expressive**.
+
 ---
 
 ## Results
 
-* Successfully generated **1000 SVG outputs**
-* All outputs are valid and properly formatted
-* Established a working baseline on the Kaggle leaderboard
+* Successfully generated 1000 valid SVG outputs
+* All rows satisfied format constraints
+* Achieved a working baseline on Kaggle
+* A noticeable portion of outputs rely on fallback
+* Visual complexity is limited
+
+---
+
+## Limitations
+
+1. High reliance on fallback SVGs
+2. Limited structural diversity
+3. Model occasionally generates non-SVG text
+4. Performance constrained by Colab runtime
+
+---
+
+## Future Improvements
+
+To improve performance, the following directions are proposed:
+
+### 1. Improve Generation Quality
+
+* Increase `max_new_tokens` size
+* Use multiple sampling attempts (`tries = 3`)
+* Apply better decoding strategies
+
+### 2. Stronger Models
+
+* Upgrade to larger models (4B)
+* Use instruction-tuned variants
+
+### 3. Better Training Strategy
+
+* Use larger filtered datasets
+* Apply curriculum learning (short → long SVGs)
+
+### 4. Reduce Fallback Dependency
+
+* Improve repair logic
+* Add structure-aware constraints during generation
+
+### 5. Efficiency Improvements
+
+* Batch inference
+* More stable execution environment (outside Colab)
 
 ---
 
 ## How to Run
 
 1. Open the notebook in **Google Colab**
-2. Upload the dataset (`dl-spring-2026-svg-generation.zip`)
-3. Install required dependencies
-4. Run inference cells to generate `submission.csv`
-
----
-
-## Future Work
-
-* Improve generation of non-fallback SVGs
-* Enhance geometric accuracy of shapes
-* Optimize decoding strategy
-* Explore larger models (e.g., 4B models)
+2. Upload dataset (`dl-spring-2026-svg-generation.zip`)
+3. Install dependencies
+4. Run all the code blocks
+5. Run inference to generate `submission.csv`
 
 ---
